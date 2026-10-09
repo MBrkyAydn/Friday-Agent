@@ -1,0 +1,11 @@
+{
+  "message_id": "msg-46b08605",
+  "sender": "Friday",
+  "recipient": "Jarvis",
+  "timestamp": "2026-10-08T10:51:20.189162+00:00",
+  "action": "execute_task",
+  "payload": {
+    "task": "Could you please provide the relative path and name of the file you\u2019d like me to verify?",
+    "workspace_path": "D:\\AI-Agents\\Friday"
+  }
+}

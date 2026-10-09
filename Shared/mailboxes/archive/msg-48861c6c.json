@@ -1,0 +1,11 @@
+{
+  "message_id": "msg-48861c6c",
+  "sender": "Friday",
+  "recipient": "Jarvis",
+  "timestamp": "2026-10-08T09:06:38.235413+00:00",
+  "action": "execute_task",
+  "payload": {
+    "task": "\u00c7al\u0131rsan durumda beklesin.",
+    "workspace_path": "C:\\Users\\brkya\\Desktop\\deneme"
+  }
+}

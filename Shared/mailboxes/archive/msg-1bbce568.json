@@ -1,0 +1,13 @@
+{
+  "message_id": "msg-1bbce568",
+  "sender": "Friday",
+  "recipient": "Jarvis",
+  "timestamp": "2026-10-08T11:18:53.733572+00:00",
+  "action": "execute_task",
+  "payload": {
+    "task": "Hesap makinesi program\u0131 yaz oop Python ile",
+    "workspace_path": "C:\\Users\\brkya\\Desktop\\deneme",
+    "profile": "local",
+    "force_local": true
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "message_id": "msg-1d577863",
+  "sender": "Friday",
+  "recipient": "Jarvis",
+  "timestamp": "2026-10-08T10:52:00.562451+00:00",
+  "action": "execute_task",
+  "payload": {
+    "task": "Understand the user's request and provide a response.",
+    "workspace_path": "D:\\AI-Agents\\Friday"
+  }
+}

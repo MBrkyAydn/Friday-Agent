@@ -1,0 +1,13 @@
+{
+  "message_id": "msg-2f87ede5",
+  "sender": "Friday",
+  "recipient": "Jarvis",
+  "timestamp": "2026-10-08T11:22:43.793794+00:00",
+  "action": "execute_task",
+  "payload": {
+    "task": "Write a simple calculator program in Java using Object-Oriented Programming (OOP). The program should include basic arithmetic operations like addition, subtraction, multiplication, and division.",
+    "workspace_path": "C:\\Users\\brkya\\Desktop\\deneme",
+    "profile": "local",
+    "force_local": true
+  }
+}

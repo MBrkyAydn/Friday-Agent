@@ -1,0 +1,13 @@
+{
+  "message_id": "msg-fe93f74a",
+  "sender": "Friday",
+  "recipient": "Jarvis",
+  "timestamp": "2026-10-08T11:22:52.959466+00:00",
+  "action": "execute_task",
+  "payload": {
+    "task": "Debug the provided Java calculator program and ensure it runs correctly. The program should include basic arithmetic operations like addition, subtraction, multiplication, and division.",
+    "workspace_path": "C:\\Users\\brkya\\Desktop\\deneme",
+    "profile": "local",
+    "force_local": true
+  }
+}
