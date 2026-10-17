@@ -1,0 +1,19 @@
+# Environment & Secrets
+.env
+*.env
+.env.*
+
+# Logs & Runtime telemetry
+Logs/
+*.log
+
+# Shared State & PIDs
+Shared/state/*.pid
+Shared/mailboxes/
+Shared/memory/*.db
+
+# Python & IDE artifacts
+__pycache__/
+*.py[cod]
+.idea/
+.vscode/
