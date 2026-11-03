@@ -100,7 +100,7 @@ class MultiLLMRouter(LLMProvider):
         """Construct standard default provider profiles.
 
         - 'local': OllamaProvider with qwen2.5-coder
-        - 'gemini-free': gemini/gemini-2.5-flash
+        - 'gemini-free': gemini/gemini-3.8-flash
         - 'gemini-paid': gemini/gemini-2.5-pro
         - 'groq': groq/openai/gpt-oss-120b
         - 'deepseek': deepseek/deepseek-chat
@@ -113,7 +113,7 @@ class MultiLLMRouter(LLMProvider):
                 api_base=local_base,
             ),
             "gemini-free": LiteLLMProvider(
-                config=LLMConfig(model="gemini/gemini-2.5-flash")
+                config=LLMConfig(model="gemini/gemini-3.8-flash")
             ),
             "gemini-paid": LiteLLMProvider(
                 config=LLMConfig(model="gemini/gemini-2.5-pro")

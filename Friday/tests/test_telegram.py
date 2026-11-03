@@ -14,9 +14,9 @@ from friday.cli import app
 
 
 def test_telegram_authorization_whitelist():
-    bridge = TelegramBridge(chat_id="YOUR_TELEGRAM_CHAT_ID_HERE")
-    assert bridge.is_authorized("YOUR_TELEGRAM_CHAT_ID_HERE") is True
-    assert bridge.is_authorized(8363039014) is True
+    bridge = TelegramBridge(chat_id="12345678")
+    assert bridge.is_authorized("12345678") is True
+    assert bridge.is_authorized(12345678) is True
     assert bridge.is_authorized("9999999999") is False
     assert bridge.is_authorized("attacker_id") is False
     assert bridge.is_authorized("") is False
@@ -52,7 +52,7 @@ async def test_telegram_send_text_notification():
 
 @pytest.mark.asyncio
 async def test_telegram_approval_allow_callback():
-    bridge = TelegramBridge(bot_token="test_token", chat_id="YOUR_TELEGRAM_CHAT_ID_HERE")
+    bridge = TelegramBridge(bot_token="test_token", chat_id="12345678")
 
     # Step 1: Send message returns message_id 101
     send_resp = MagicMock()
@@ -67,7 +67,7 @@ async def test_telegram_approval_allow_callback():
                 "update_id": 1,
                 "callback_query": {
                     "id": "cq_1",
-                    "from": {"id": 8363039014},
+                    "from": {"id": 12345678},
                     "data": "perm_mocked:allow",
                 },
             }
@@ -95,7 +95,7 @@ async def test_telegram_approval_allow_callback():
 
 @pytest.mark.asyncio
 async def test_telegram_approval_ignores_unauthorized_user():
-    bridge = TelegramBridge(bot_token="test_token", chat_id="YOUR_TELEGRAM_CHAT_ID_HERE")
+    bridge = TelegramBridge(bot_token="test_token", chat_id="12345678")
 
     send_resp = MagicMock()
     send_resp.json.return_value = {"ok": True, "result": {"message_id": 102}}
@@ -125,7 +125,7 @@ async def test_telegram_approval_ignores_unauthorized_user():
                 "update_id": 2,
                 "callback_query": {
                     "id": "cq_real",
-                    "from": {"id": 8363039014},  # Authorized
+                    "from": {"id": 12345678},  # Authorized
                     "data": "perm_mocked:deny",
                 },
             }
@@ -236,7 +236,7 @@ def test_cli_telegram_status_and_enable(tmp_path: Path):
 
 @pytest.mark.asyncio
 async def test_telegram_approval_indefinite_waiting():
-    bridge = TelegramBridge(bot_token="test_token", chat_id="YOUR_TELEGRAM_CHAT_ID_HERE")
+    bridge = TelegramBridge(bot_token="test_token", chat_id="12345678")
 
     send_resp = MagicMock()
     send_resp.json.return_value = {"ok": True, "result": {"message_id": 999}}
@@ -253,7 +253,7 @@ async def test_telegram_approval_indefinite_waiting():
                 "update_id": 1,
                 "callback_query": {
                     "id": "cq_1",
-                    "from": {"id": 8363039014},
+                    "from": {"id": 12345678},
                     "data": "perm_mocked:allow",
                 },
             }
@@ -282,7 +282,7 @@ async def test_telegram_approval_indefinite_waiting():
 
 @pytest.mark.asyncio
 async def test_telegram_send_notification_with_permission_buttons():
-    bridge = TelegramBridge(bot_token="test_token", chat_id="YOUR_TELEGRAM_CHAT_ID_HERE")
+    bridge = TelegramBridge(bot_token="test_token", chat_id="12345678")
     mock_resp = MagicMock()
     mock_resp.json.return_value = {"ok": True, "result": {"message_id": 777}}
 
@@ -300,7 +300,7 @@ async def test_telegram_send_notification_with_permission_buttons():
 
 @pytest.mark.asyncio
 async def test_telegram_approval_text_reply():
-    bridge = TelegramBridge(bot_token="test_token", chat_id="YOUR_TELEGRAM_CHAT_ID_HERE")
+    bridge = TelegramBridge(bot_token="test_token", chat_id="12345678")
 
     send_resp = MagicMock()
     send_resp.json.return_value = {"ok": True, "result": {"message_id": 888}}
@@ -313,7 +313,7 @@ async def test_telegram_approval_text_reply():
                 "update_id": 1,
                 "message": {
                     "message_id": 889,
-                    "from": {"id": 8363039014},
+                    "from": {"id": 12345678},
                     "text": "Onay",
                 },
             }

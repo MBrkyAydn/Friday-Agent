@@ -61,7 +61,7 @@ SUPPORTED_PROFILES = ("local", "gemini-free", "gemini-paid", "groq", "deepseek",
 
 PROFILE_MODELS: Dict[str, str] = {
     "local": "ollama/qwen2.5-coder",
-    "gemini-free": "gemini/gemini-2.5-flash",
+    "gemini-free": "gemini/gemini-3.8-flash",
     "gemini-paid": "gemini/gemini-2.5-pro",
     "groq": "groq/openai/gpt-oss-120b",
     "deepseek": "deepseek/deepseek-chat",
@@ -269,6 +269,8 @@ def setup_runtime(
         if hasattr(active_p, "config"):
             if model:
                 active_p.config.model = model
+            elif config.model:
+                active_p.config.model = config.model
             active_p.config.temperature = config.temperature
             if config.api_base:
                 active_p.config.api_base = config.api_base

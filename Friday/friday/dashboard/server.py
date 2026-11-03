@@ -34,9 +34,11 @@ def create_dashboard_app(
         try:
             from friday.cli import setup_runtime
             runtime = setup_runtime(target_dir=workspace_path, yolo=True)
-            bus = runtime.get("bus") or bus
+            if bus is None:
+                bus = runtime.get("bus")
             lead_agent = runtime.get("agent")
-            router = runtime.get("llm") or router
+            if router is None:
+                router = runtime.get("llm")
             if memory is None:
                 memory = getattr(lead_agent, "memory", None)
         except Exception as e:
