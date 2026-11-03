@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FRIDAY & JARVIS Observability Dashboard</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              500: '#6366f1',
+              600: '#4f46e5',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbar for terminal & panels */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #111827;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #374151;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #4b5563;
+    }
+    .pulse-dot {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 h-screen flex flex-col overflow-hidden font-sans antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- Header -->
+  <header class="border-b border-gray-800 bg-gray-900/80 backdrop-blur sticky top-0 z-40 px-6 py-3 flex items-center justify-between shadow-md shrink-0">
+    <div class="flex items-center space-x-3">
+      <div class="h-9 w-9 rounded-lg bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 flex items-center justify-center font-black text-white shadow-lg shadow-indigo-500/20 text-lg">
+        ⚡
+      </div>
+      <div>
+        <h1 class="text-lg font-bold tracking-tight flex items-center gap-2">
+          <span>FRIDAY & JARVIS</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-700/50 font-medium">Observability Dashboard</span>
+        </h1>
+        <p class="text-xs text-gray-400 font-mono flex items-center gap-1.5" id="workspace-display">
+          <span>Workspace:</span> <span class="text-gray-300">Loading...</span>
+        </p>
+      </div>
+    </div>
+
+    <!-- Controls, Profile Selector & Status -->
+    <div class="flex items-center space-x-3">
+      <!-- Interactive LLM Model Selector -->
+      <div class="flex items-center gap-1.5 bg-gray-800/90 px-3 py-1.5 rounded-lg border border-gray-700/60 shadow-sm">
+        <span class="text-xs text-gray-400 font-medium">LLM:</span>
+        <select id="profile-select" onchange="changeProfile(this.value)" class="bg-transparent text-xs font-semibold text-cyan-300 focus:outline-none cursor-pointer">
+          <option value="groq" class="bg-gray-900 text-gray-100">Groq (openai/gpt-oss-120b)</option>
+          <option value="local" class="bg-gray-900 text-gray-100">Local (Ollama Qwen 2.5)</option>
+          <option value="gemini-free" class="bg-gray-900 text-gray-100">Gemini 2.5 Flash (Free)</option>
+          <option value="gemini-paid" class="bg-gray-900 text-gray-100">Gemini 2.5 Pro (Paid)</option>
+          <option value="deepseek" class="bg-gray-900 text-gray-100">DeepSeek Chat</option>
+          <option value="claude" class="bg-gray-900 text-gray-100">Claude 3.5 Sonnet</option>
+        </select>
+      </div>
+
+      <div id="ws-status" class="px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-2 bg-yellow-950/80 text-yellow-300 border border-yellow-800/50">
+        <span class="h-2 w-2 rounded-full bg-yellow-400 pulse-dot" id="ws-status-dot"></span>
+        <span id="ws-status-text">Connecting</span>
+      </div>
+
+      <button id="btn-refresh" onclick="refreshAll()" class="p-2 rounded-md hover:bg-gray-800 text-gray-400 hover:text-gray-200 transition" title="Refresh Data">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Grid Layout: Viewport Constrained -->
+  <main class="flex-1 h-[calc(100vh-65px)] min-h-0 overflow-hidden p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 max-w-7xl mx-auto w-full">
+
+    <!-- Left Column: Agent Cards & Feeds (5 cols) with internal scrolling -->
+    <div class="lg:col-span-5 flex flex-col h-full min-h-0 space-y-4 overflow-y-auto pr-1">
+
+      <!-- Agent Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <!-- FRIDAY Card -->
+        <div class="bg-gray-900 border border-indigo-900/40 rounded-xl p-4 shadow-md relative overflow-hidden flex flex-col justify-between">
+          <div class="absolute -right-4 -top-4 w-20 h-20 bg-indigo-500/10 rounded-full blur-xl pointer-events-none"></div>
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs uppercase tracking-wider text-indigo-400 font-bold">FRIDAY</span>
+              <span id="friday-badge" class="px-2 py-0.5 text-xs font-semibold rounded bg-emerald-950 text-emerald-400 border border-emerald-800/50">IDLE</span>
+            </div>
+            <div class="text-sm font-semibold text-gray-200 mb-1">Lead Orchestrator</div>
+            <p class="text-xs text-gray-400">Autonomous planning, validation & delegation.</p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-gray-800/80 text-xs">
+            <div class="flex justify-between text-gray-400 py-0.5">
+              <span>Last Tool:</span>
+              <span id="friday-last-tool" class="font-mono text-cyan-400 truncate max-w-[120px]">-</span>
+            </div>
+            <div class="flex justify-between text-gray-400 py-0.5">
+              <span>Bus Events:</span>
+              <span id="friday-event-count" class="font-mono text-gray-300">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- JARVIS Card -->
+        <div class="bg-gray-900 border border-cyan-900/40 rounded-xl p-4 shadow-md relative overflow-hidden flex flex-col justify-between">
+          <div class="absolute -right-4 -top-4 w-20 h-20 bg-cyan-500/10 rounded-full blur-xl pointer-events-none"></div>
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs uppercase tracking-wider text-cyan-400 font-bold">JARVIS</span>
+              <span id="jarvis-badge" class="px-2 py-0.5 text-xs font-semibold rounded bg-emerald-950 text-emerald-400 border border-emerald-800/50">IDLE</span>
+            </div>
+            <div class="text-sm font-semibold text-gray-200 mb-1">Worker Specialist</div>
+            <p class="text-xs text-gray-400">IPC task execution, isolated tools & tests.</p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-gray-800/80 text-xs">
+            <div class="flex justify-between text-gray-400 py-0.5">
+              <span>Last IPC:</span>
+              <span id="jarvis-last-ipc" class="font-mono text-cyan-400 truncate max-w-[120px]">-</span>
+            </div>
+            <div class="flex justify-between text-gray-400 py-0.5">
+              <span>Inbox Msgs:</span>
+              <span id="jarvis-msg-count" class="font-mono text-gray-300">0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mailbox IPC Stream -->
+      <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 flex flex-col shadow-md shrink-0">
+        <div class="flex items-center justify-between mb-3 border-b border-gray-800 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-bold text-gray-200">📬 Shared Mailbox Stream</span>
+            <span class="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded-full" id="mailbox-total-count">0 items</span>
+          </div>
+          <button onclick="fetchMailbox()" class="text-xs text-indigo-400 hover:text-indigo-300 transition">Refresh</button>
+        </div>
+        <div id="mailbox-feed" class="max-h-[220px] overflow-y-auto space-y-2.5 pr-1">
+          <div class="text-center py-6 text-gray-500 text-xs">No active mailbox messages found.</div>
+        </div>
+      </div>
+
+      <!-- Workspace Files Snippet -->
+      <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-md shrink-0">
+        <div class="flex items-center justify-between mb-3 border-b border-gray-800 pb-2">
+          <span class="text-sm font-bold text-gray-200">📁 Workspace Files</span>
+          <button onclick="fetchFiles()" class="text-xs text-indigo-400 hover:text-indigo-300 transition">Refresh</button>
+        </div>
+        <div id="files-list" class="max-h-[140px] overflow-y-auto space-y-1 text-xs font-mono">
+          <div class="text-gray-500">Loading files...</div>
+        </div>
+      </div>
+
+      <!-- Agency Memory Card -->
+      <div class="bg-gray-900 border border-purple-900/40 rounded-xl p-4 shadow-md shrink-0">
+        <div class="flex items-center justify-between mb-3 border-b border-gray-800 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-bold text-purple-300">🧠 Persistent Memory</span>
+            <span class="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded-full" id="memory-total-count">0 items</span>
+          </div>
+          <button onclick="fetchMemories()" class="text-xs text-purple-400 hover:text-purple-300 transition">Refresh</button>
+        </div>
+        <div id="memory-feed" class="max-h-[140px] overflow-y-auto space-y-1.5 text-xs font-mono">
+          <div class="text-gray-500">Loading memories...</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Live Console & Command Bar (7 cols) -->
+    <div class="lg:col-span-7 flex flex-col h-full min-h-0">
+
+      <!-- Live Terminal / Console Panel: Viewport constrained -->
+      <div class="bg-gray-900 border border-gray-800 rounded-xl h-full min-h-0 flex flex-col shadow-lg overflow-hidden">
+        <!-- Terminal Header -->
+        <div class="bg-gray-950 px-4 py-2.5 border-b border-gray-800 flex items-center justify-between shrink-0">
+          <div class="flex items-center space-x-2">
+            <div class="flex space-x-1.5">
+              <span class="w-3 h-3 rounded-full bg-red-500/80 inline-block"></span>
+              <span class="w-3 h-3 rounded-full bg-yellow-500/80 inline-block"></span>
+              <span class="w-3 h-3 rounded-full bg-green-500/80 inline-block"></span>
+            </div>
+            <span class="text-xs font-mono text-gray-400 ml-2">live-stream.log</span>
+          </div>
+
+          <div class="flex items-center space-x-3 text-xs">
+            <label class="flex items-center gap-1.5 text-gray-400 cursor-pointer select-none">
+              <input type="checkbox" id="autoscroll-toggle" checked class="rounded bg-gray-800 border-gray-700 text-indigo-600 focus:ring-0">
+              <span>Auto-scroll</span>
+            </label>
+            <button onclick="clearConsole()" class="text-gray-400 hover:text-gray-200 transition">Clear</button>
+          </div>
+        </div>
+
+        <!-- Terminal Body: Internal Scrolling Only -->
+        <div id="terminal-log" class="console flex-1 min-h-0 bg-gray-950 p-4 font-mono text-xs overflow-y-auto space-y-1.5 leading-relaxed selection:bg-indigo-900">
+          <div class="text-gray-500 italic">[SYSTEM] Connected to FRIDAY & JARVIS Observability Console.</div>
+          <div class="text-gray-500 italic">[SYSTEM] Real-time interactive bus active.</div>
+        </div>
+
+        <!-- Quick Action Shortcuts -->
+        <div class="px-3 py-1.5 bg-gray-900 border-t border-gray-800 flex items-center gap-2 overflow-x-auto text-[11px] font-mono shrink-0">
+          <span class="text-gray-500 text-xs">Quick:</span>
+          <button onclick="setPromptAndRun('Run pytest tests in project')" class="px-2 py-0.5 rounded bg-gray-800 hover:bg-gray-700 text-cyan-300 transition whitespace-nowrap">🧪 Run Tests</button>
+          <button onclick="setPromptAndRun('Check git status and report changes')" class="px-2 py-0.5 rounded bg-gray-800 hover:bg-gray-700 text-indigo-300 transition whitespace-nowrap">🔍 Git Status</button>
+          <button onclick="setPromptAndRun('Ping Jarvis worker and verify mailbox status')" class="px-2 py-0.5 rounded bg-gray-800 hover:bg-gray-700 text-emerald-300 transition whitespace-nowrap">📬 Ping Jarvis</button>
+        </div>
+
+        <!-- Interactive Command Execution Bar -->
+        <div class="p-3 bg-gray-900 border-t border-gray-800 flex items-center gap-2 shrink-0">
+          <div class="relative flex-1">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-mono text-xs">❯</span>
+            <input 
+              type="text" 
+              id="cmd-input" 
+              placeholder="Send task or command to FRIDAY..." 
+              class="w-full pl-7 pr-3 py-2 bg-gray-950 border border-gray-700/80 rounded-lg text-xs text-gray-100 placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-mono transition"
+              onkeydown="if(event.key === 'Enter') { const btn = document.getElementById('btn-run'); if(!btn || !btn.disabled) sendCommand(); }"
+            >
+          </div>
+          <button 
+            id="btn-run"
+            onclick="sendCommand()" 
+            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition shadow-md flex items-center gap-1.5"
+          >
+            <span id="btn-run-text">Run</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Human-in-the-Loop Tier 2 Permission Modal -->
+  <div id="permission-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-50 flex items-center justify-center p-6">
+    <div class="bg-gray-900 border border-amber-600/60 rounded-xl max-w-lg w-full flex flex-col shadow-2xl overflow-hidden animate-pulse-once">
+      <div class="px-5 py-3.5 border-b border-gray-800 flex items-center justify-between bg-amber-950/40">
+        <div class="flex items-center gap-2">
+          <span class="text-amber-400 text-lg">⚠️</span>
+          <h3 class="text-sm font-bold text-amber-200">Security Approval Required (Tier 2)</h3>
+        </div>
+        <span id="perm-req-id" class="text-xs font-mono text-gray-400">#req</span>
+      </div>
+      <div class="p-5 space-y-3">
+        <p class="text-xs text-gray-300">
+          FRIDAY or an active agent requested permission to execute a potentially destructive or restricted tool:
+        </p>
+        <div class="bg-gray-950 border border-gray-800 rounded-lg p-3 text-xs font-mono">
+          <div class="text-cyan-400 font-semibold mb-1">Tool: <span id="perm-tool" class="text-white">unknown</span></div>
+          <div class="text-gray-400 text-[11px] whitespace-pre-wrap break-all" id="perm-details">{}</div>
+        </div>
+      </div>
+      <div class="px-5 py-3 bg-gray-950 border-t border-gray-800 flex items-center justify-end gap-2">
+        <button onclick="respondPermission('deny')" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-rose-900/80 text-rose-300 text-xs font-medium transition">
+          Deny / Reddet
+        </button>
+        <button onclick="respondPermission('allow_always')" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-indigo-900/80 text-indigo-300 text-xs font-medium transition">
+          Always Allow / Her Zaman
+        </button>
+        <button onclick="respondPermission('allow')" class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-md">
+          Allow / İzin Ver
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- File Content Modal -->
+  <div id="file-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden z-50 flex items-center justify-center p-6">
+    <div class="bg-gray-900 border border-gray-800 rounded-xl max-w-3xl w-full flex flex-col max-h-[85vh] shadow-2xl overflow-hidden">
+      <div class="px-5 py-3 border-b border-gray-800 flex items-center justify-between bg-gray-950">
+        <h3 id="modal-filename" class="text-sm font-mono font-bold text-gray-200">File Preview</h3>
+        <button onclick="closeModal()" class="text-gray-400 hover:text-white text-lg">&times;</button>
+      </div>
+      <pre id="modal-content" class="p-4 overflow-y-auto text-xs font-mono bg-gray-950 text-gray-300 flex-1 whitespace-pre-wrap"></pre>
+    </div>
+  </div>
+
+  <!-- Client JavaScript -->
+  <script>
+    let ws = null;
+    let eventCounter = 0;
+    let activeRequestId = null;
+    let isConnected = false;
+    let reconnectTimer = null;
+    let pingInterval = null;
+    const terminal = document.getElementById('terminal-log');
+    const autoScroll = document.getElementById('autoscroll-toggle');
+
+    function appendLog(lineHtml) {
+      const div = document.createElement('div');
+      div.innerHTML = lineHtml;
+      terminal.appendChild(div);
+      if (autoScroll.checked) {
+        terminal.scrollTop = terminal.scrollHeight;
+      }
+    }
+
+    function clearConsole() {
+      terminal.innerHTML = '<div class="text-gray-500 italic">[SYSTEM] Console cleared.</div>';
+    }
+
+    function scheduleReconnect() {
+      if (!reconnectTimer) {
+        reconnectTimer = setTimeout(() => {
+          reconnectTimer = null;
+          connectWS();
+        }, 3000);
+      }
+    }
+
+    // Connect WebSocket
+    function connectWS() {
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      const statusBadge = document.getElementById('ws-status');
+      const statusText = document.getElementById('ws-status-text');
+      const statusDot = document.getElementById('ws-status-dot');
+
+      try {
+        ws = new WebSocket(wsUrl);
+      } catch (err) {
+        scheduleReconnect();
+        return;
+      }
+
+      ws.onopen = () => {
+        isConnected = true;
+        statusBadge.className = 'px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-2 bg-emerald-950/80 text-emerald-300 border border-emerald-800/50';
+        statusDot.className = 'h-2 w-2 rounded-full bg-emerald-400';
+        statusText.innerText = 'Online';
+        appendLog('<span class="text-emerald-400 font-bold">[WS]</span> Connected to real-time event bus.');
+
+        if (pingInterval) clearInterval(pingInterval);
+        pingInterval = setInterval(() => {
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'ping' }));
+          }
+        }, 20000);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          eventCounter++;
+          document.getElementById('friday-event-count').innerText = eventCounter;
+
+          const time = new Date().toLocaleTimeString();
+
+          if (data.type === 'tool_start') {
+            const toolName = data.tool || data.tool_name || 'tool';
+            document.getElementById('friday-last-tool').innerText = toolName;
+            document.getElementById('friday-badge').innerText = 'RUNNING';
+            document.getElementById('friday-badge').className = 'px-2 py-0.5 text-xs font-semibold rounded bg-indigo-950 text-indigo-400 border border-indigo-800/50';
+            appendLog(`<span class="text-gray-500">[${time}]</span> <span class="text-cyan-400 font-bold">TOOL_START:</span> <span class="text-white">${toolName}</span> <span class="text-gray-400">${JSON.stringify(data.args || data.arguments || {})}</span>`);
+          } else if (data.type === 'tool_result') {
+            document.getElementById('friday-badge').innerText = 'IDLE';
+            document.getElementById('friday-badge').className = 'px-2 py-0.5 text-xs font-semibold rounded bg-emerald-950 text-emerald-400 border border-emerald-800/50';
+            const statusColor = data.success ? 'text-emerald-400' : 'text-red-400';
+            appendLog(`<span class="text-gray-500">[${time}]</span> <span class="${statusColor} font-bold">TOOL_RESULT:</span> <span class="text-gray-300">${data.output || data.error || ''}</span>`);
+          } else if (data.type === 'thought') {
+            appendLog(`<span class="text-gray-500">[${time}]</span> <span class="text-purple-400 font-bold">[THINK]</span> <span class="text-purple-200">${data.thought}</span>`);
+            resetRunButton();
+          } else if (data.type === 'agent_state') {
+            const isRunning = data.state === 'RUNNING';
+            document.getElementById('friday-badge').innerText = data.state || 'IDLE';
+            document.getElementById('friday-badge').className = isRunning
+              ? 'px-2 py-0.5 text-xs font-semibold rounded bg-indigo-950 text-indigo-400 border border-indigo-800/50'
+              : 'px-2 py-0.5 text-xs font-semibold rounded bg-emerald-950 text-emerald-400 border border-emerald-800/50';
+            if (!isRunning || data.state === 'IDLE') resetRunButton();
+          } else if (data.type === 'task_done') {
+            document.getElementById('friday-badge').innerText = 'IDLE';
+            document.getElementById('friday-badge').className = 'px-2 py-0.5 text-xs font-semibold rounded bg-emerald-950 text-emerald-400 border border-emerald-800/50';
+            resetRunButton();
+            appendLog(`<span class="text-gray-500">[${time}]</span> <span class="text-emerald-400 font-bold">TASK_DONE:</span> <span class="text-emerald-200">${data.summary || 'Task completed successfully.'}</span>`);
+          } else if (data.type === 'task_blocked') {
+            document.getElementById('friday-badge').innerText = 'IDLE';
+            document.getElementById('friday-badge').className = 'px-2 py-0.5 text-xs font-semibold rounded bg-rose-950 text-rose-400 border border-rose-800/50';
+            resetRunButton();
+            appendLog(`<span class="text-gray-500">[${time}]</span> <span class="text-rose-400 font-bold">TASK_BLOCKED:</span> <span class="text-rose-200">${data.reason || 'Task blocked'}</span>`);
+          } else if (data.type === 'llm_fallback') {
+            appendLog(`<span class="text-gray-500">[${time}]</span> <span class="text-amber-400 font-bold">[FALLBACK]</span> Auto-fallback from ${data.from_profile} to ${data.to_profile}: ${data.reason}`);
+          } else if (data.type === 'profile_changed') {
+            document.getElementById('profile-select').value = data.profile;
+            appendLog(`<span class="text-gray-500">[${time}]</span> <span class="text-cyan-300 font-bold">[MODEL]</span> Active LLM profile switched to: <span class="text-white font-bold">${data.profile}</span>`);
+          } else if (data.type === 'permission_request') {
+            activeRequestId = data.request_id;
+            document.getElementById('perm-req-id').innerText = `#${data.request_id}`;
+            document.getElementById('perm-tool').innerText = data.tool || 'Action';
+            document.getElementById('perm-details').innerText = JSON.stringify(data.details || {}, null, 2);
+            document.getElementById('permission-modal').classList.remove('hidden');
+            appendLog(`<span class="text-gray-500">[${time}]</span> <span class="text-amber-400 font-bold">⚠️ PERMISSION_REQUEST:</span> Awaiting approval for <span class="text-white">${data.tool}</span>`);
+          } else if (data.type === 'permission_resolved') {
+            if (activeRequestId === data.request_id) {
+              document.getElementById('permission-modal').classList.add('hidden');
+              activeRequestId = null;
+            }
+            appendLog(`<span class="text-gray-500">[${time}]</span> <span class="text-indigo-400 font-bold">[AUTH]</span> Permission resolved: <span class="text-white">${data.decision}</span>`);
+          } else {
+            appendLog(`<span class="text-gray-500">[${time}]</span> <span class="text-purple-400">[BUS]</span> <span class="text-gray-300">${JSON.stringify(data)}</span>`);
+          }
+        } catch (e) {
+          appendLog(`<span class="text-gray-500">[RAW]</span> ${event.data}`);
+        }
+      };
+
+      ws.onclose = () => {
+        if (pingInterval) clearInterval(pingInterval);
+        statusBadge.className = 'px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-2 bg-rose-950/80 text-rose-300 border border-rose-800/50';
+        statusDot.className = 'h-2 w-2 rounded-full bg-rose-400 pulse-dot';
+        statusText.innerText = 'Disconnected';
+        if (isConnected) {
+          appendLog('<span class="text-rose-400 font-bold">[WS]</span> Disconnected from event bus. Reconnecting...');
+          isConnected = false;
+        }
+        scheduleReconnect();
+      };
+
+      ws.onerror = () => {
+        // Handled in onclose
+      };
+    }
+
+    // Model Profile Switching
+    async function changeProfile(newProfile) {
+      appendLog(`<span class="text-indigo-400 font-bold">[CONFIG]</span> Requesting model switch to: ${newProfile}...`);
+      try {
+        const res = await fetch('/api/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ profile: newProfile })
+        });
+        if (res.ok) {
+          appendLog(`<span class="text-emerald-400 font-bold">[SUCCESS]</span> Switched to ${newProfile}`);
+        } else {
+          appendLog(`<span class="text-red-400 font-bold">[ERROR]</span> Profile switch failed: ${res.statusText}`);
+        }
+      } catch (e) {
+        appendLog(`<span class="text-red-400 font-bold">[ERROR]</span> ${e.message}`);
+      }
+    }
+
+    // Permission Response
+    async function respondPermission(decision) {
+      if (!activeRequestId) return;
+      try {
+        const res = await fetch('/api/permission', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ request_id: activeRequestId, decision: decision })
+        });
+        if (res.ok) {
+          document.getElementById('permission-modal').classList.add('hidden');
+          activeRequestId = null;
+        }
+      } catch (e) {
+        alert('Failed to respond to permission request: ' + e);
+      }
+    }
+
+    // Interactive Command Execution
+    let cmdTimeoutTimer = null;
+
+    function resetRunButton() {
+      if (cmdTimeoutTimer) {
+        clearTimeout(cmdTimeoutTimer);
+        cmdTimeoutTimer = null;
+      }
+      const btn = document.getElementById('btn-run');
+      const btnText = document.getElementById('btn-run-text');
+      if (btn) btn.disabled = false;
+      if (btnText) btnText.innerText = 'Run';
+    }
+
+    async function sendCommand() {
+      const btn = document.getElementById('btn-run');
+      if (btn && btn.disabled) return;
+
+      const input = document.getElementById('cmd-input');
+      const val = input.value.trim();
+      if (!val) return;
+      
+      const btnText = document.getElementById('btn-run-text');
+      if (btn) btn.disabled = true;
+      if (btnText) btnText.innerText = 'Running...';
+      input.value = '';
+
+      appendLog(`<span class="text-indigo-400 font-bold">[USER]</span> <span>${val}</span>`);
+
+      // 15-second safety timeout
+      if (cmdTimeoutTimer) clearTimeout(cmdTimeoutTimer);
+      cmdTimeoutTimer = setTimeout(() => {
+        resetRunButton();
+      }, 15000);
+
+      try {
+        const res = await fetch('/api/task', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: val })
+        });
+        if (!res.ok) {
+          appendLog(`<span class="text-red-400 font-bold">[ERROR]</span> Failed to dispatch task: ${res.statusText}`);
+          resetRunButton();
+        }
+      } catch (e) {
+        appendLog(`<span class="text-red-400 font-bold">[ERROR]</span> ${e.message}`);
+        resetRunButton();
+      }
+    }
+
+    function setPromptAndRun(promptText) {
+      document.getElementById('cmd-input').value = promptText;
+      sendCommand();
+    }
+
+    // REST API Calls
+    async function fetchStatus() {
+      try {
+        const res = await fetch('/api/status');
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById('workspace-display').innerHTML = `<span>Workspace:</span> <span class="text-gray-300">${data.workspace}</span>`;
+          if (data.active_profile) {
+            document.getElementById('profile-select').value = data.active_profile;
+          }
+          document.getElementById('friday-badge').innerText = data.friday_state || 'IDLE';
+          document.getElementById('jarvis-badge').innerText = data.jarvis_state || 'IDLE';
+        }
+      } catch (e) {
+        console.error('Failed to fetch status', e);
+      }
+    }
+
+    async function fetchMailbox() {
+      try {
+        const res = await fetch('/api/mailbox');
+        const container = document.getElementById('mailbox-feed');
+        if (res.ok) {
+          const msgs = await res.json();
+          document.getElementById('mailbox-total-count').innerText = `${msgs.length} items`;
+          document.getElementById('jarvis-msg-count').innerText = msgs.length;
+          if (msgs.length === 0) {
+            container.innerHTML = '<div class="text-center py-8 text-gray-500 text-xs">No active mailbox messages found.</div>';
+            return;
+          }
+          container.innerHTML = '';
+          msgs.forEach(msg => {
+            const isJarvis = msg._box === 'jarvis_inbox';
+            const card = document.createElement('div');
+            card.className = `p-2.5 rounded-lg border text-xs ${isJarvis ? 'bg-cyan-950/20 border-cyan-800/40' : 'bg-indigo-950/20 border-indigo-800/40'}`;
+            card.innerHTML = `
+              <div class="flex items-center justify-between mb-1">
+                <span class="font-bold ${isJarvis ? 'text-cyan-400' : 'text-indigo-400'}">${msg.sender || 'Unknown'} ➔ ${msg.recipient || 'Unknown'}</span>
+                <span class="text-gray-500 font-mono text-[10px]">${msg.action || 'msg'}</span>
+              </div>
+              <div class="text-gray-300 font-mono truncate text-[11px]">${JSON.stringify(msg.payload || {})}</div>
+            `;
+            container.appendChild(card);
+          });
+        }
+      } catch (e) {
+        console.error('Failed to fetch mailbox', e);
+      }
+    }
+
+    async function fetchFiles() {
+      try {
+        const res = await fetch('/api/files');
+        const container = document.getElementById('files-list');
+        if (res.ok) {
+          const files = await res.json();
+          if (files.length === 0) {
+            container.innerHTML = '<div class="text-gray-500">No files found.</div>';
+            return;
+          }
+          container.innerHTML = '';
+          files.forEach(f => {
+            const item = document.createElement('div');
+            item.className = 'flex items-center justify-between hover:bg-gray-800/50 px-2 py-1 rounded cursor-pointer transition';
+            item.innerHTML = `
+              <span class="${f.is_dir ? 'text-indigo-400 font-semibold' : 'text-gray-300'} truncate">${f.is_dir ? '📁 ' : '📄 '} ${f.name}</span>
+              <span class="text-gray-500 text-[10px]">${f.is_dir ? 'dir' : (f.size + ' B')}</span>
+            `;
+            if (!f.is_dir) {
+              item.onclick = () => previewFile(f.path, f.name);
+            }
+            container.appendChild(item);
+          });
+        }
+      } catch (e) {
+        console.error('Failed to fetch files', e);
+      }
+    }
+
+    async function previewFile(path, name) {
+      try {
+        const res = await fetch(`/api/files/content?path=${encodeURIComponent(path)}`);
+        if (res.ok) {
+          const text = await res.text();
+          document.getElementById('modal-filename').innerText = name;
+          document.getElementById('modal-content').innerText = text;
+          document.getElementById('file-modal').classList.remove('hidden');
+        }
+      } catch (e) {
+        alert('Could not load file: ' + e);
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('file-modal').classList.add('hidden');
+    }
+
+    async function fetchMemories() {
+      try {
+        const res = await fetch('/api/memory');
+        const container = document.getElementById('memory-feed');
+        if (res.ok) {
+          const items = await res.json();
+          document.getElementById('memory-total-count').innerText = `${items.length} items`;
+          if (items.length === 0) {
+            container.innerHTML = '<div class="text-gray-500">No memories stored.</div>';
+            return;
+          }
+          container.innerHTML = '';
+          items.forEach(it => {
+            const el = document.createElement('div');
+            el.className = 'p-2 rounded bg-purple-950/20 border border-purple-900/30 text-xs';
+            el.innerHTML = `
+              <div class="flex items-center justify-between text-[11px] mb-0.5">
+                <span class="font-bold text-purple-300">[${it.category}] ${it.key}</span>
+                <span class="text-gray-500 text-[10px]">hits: ${it.access_count}</span>
+              </div>
+              <div class="text-gray-400 text-[11px] truncate" title="${it.content}">${it.content}</div>
+            `;
+            container.appendChild(el);
+          });
+        }
+      } catch (e) {
+        console.error('Failed to fetch memories', e);
+      }
+    }
+
+    function refreshAll() {
+      fetchStatus();
+      fetchMailbox();
+      fetchFiles();
+      fetchMemories();
+    }
+
+    // Startup
+    window.addEventListener('DOMContentLoaded', () => {
+      refreshAll();
+      connectWS();
+      setInterval(fetchMailbox, 4000);
+      setInterval(fetchMemories, 10000);
+    });
+  </script>
+</body>
+</html>

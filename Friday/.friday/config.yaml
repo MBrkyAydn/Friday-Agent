@@ -1,0 +1,13 @@
+model: groq/openai/gpt-oss-120b
+temperature: 0.2
+max_context_tokens: 8192
+yolo_mode: false
+verification_command: null
+max_repair_retries: 3
+max_steps: 10
+api_base: null
+active_profile: groq
+api_keys: {}
+telegram_enabled: false
+telegram_bot_token: null
+telegram_chat_id: null

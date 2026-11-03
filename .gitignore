@@ -8,14 +8,42 @@
 # Logs & Runtime telemetry
 Logs/
 *.log
+**/*.log
 
-# Shared State & PIDs
-Shared/state/*.pid
-Shared/mailboxes/
-Shared/memory/*.db
+# Shared State, Mailboxes & Memory
+Shared/mailboxes/*
+!Shared/mailboxes/.gitkeep
+Shared/state/*
+!Shared/state/.gitkeep
+Shared/memory/*
+!Shared/memory/.gitkeep
 
-# Python & IDE artifacts
+# Python & Build artifacts
 __pycache__/
+**/__pycache__/
 *.py[cod]
+*$py.class
+*.egg-info/
+**/*.egg-info/
+build/
+dist/
+.pytest_cache/
+**/.pytest_cache/
+
+# Agent Runtime State
+.friday/sessions/
+**/.friday/sessions/
+*.backup
+**/*.backup
+.serena/
+**/.serena/
+graphify-out/
+**/graphify-out/
+
+# IDE & OS settings
 .idea/
 .vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

@@ -1,0 +1,29 @@
+# Python byte code and caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# FRIDAY runtime artifacts
+.friday/sessions/
+*.backup
+.serena/
+graphify-out/
+
+# IDE & Editor settings
+.idea/
+.vscode/
+*.swp
+*.swo
